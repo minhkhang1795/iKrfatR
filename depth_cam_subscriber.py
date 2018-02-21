@@ -1,3 +1,18 @@
+"""
+By Khang Vu & Sherrie Shen, 2018
+Last Modified Feb 20, 2018
+
+The script ...
+
+Dependencies:
+- realsense_ros_camera
+
+To use:
+- Open Terminal and run the code below:
+
+roslaunch realsense_ros_camera rs_camera.launch
+
+"""
 import numpy as np
 
 import cv2
