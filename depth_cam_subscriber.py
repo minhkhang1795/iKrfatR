@@ -1,9 +1,11 @@
-import cv2
 import numpy as np
+
+import cv2
 import rospy
 from cv_bridge import CvBridgeError, CvBridge
-from sensor_msgs.msg import Image, CompressedImage, CameraInfo
 from realsense_ros_camera.msg import Extrinsics
+from sensor_msgs.msg import Image
+
 
 class DepthCamTest:
     def __init__(self):
@@ -12,6 +14,7 @@ class DepthCamTest:
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/extrinsics/depth_to_color', Extrinsics, self.depth_callback1, queue_size=10)
+        self.depth_scale = 0.000124986647279
         self.rgb_data = None
         self.depth_data = None
 
@@ -52,8 +55,12 @@ class DepthCamTest:
         r = rospy.Rate(10)
         while not rospy.is_shutdown():
             r.sleep()
-            self.depth_data = cv2.applyColorMap(self.depth_data.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-            cv2.imshow('', self.depth_data)
+            d = self.depth_data
+            print d
+            d = self.depth_data * self.depth_scale * 1000
+            d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+
+            cv2.imshow('', d)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
