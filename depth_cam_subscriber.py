@@ -71,8 +71,8 @@ class DepthCamTest:
         while not rospy.is_shutdown():
             r.sleep()
             d = self.depth_data
-            print d
             d = self.depth_data * self.depth_scale * 1000
+            print d[480/2][640/2]
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
 
             cv2.imshow('', d)
