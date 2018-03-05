@@ -127,17 +127,23 @@ class DepthCamTest:
             self.r.sleep()
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z", "rgb"))
             for i, p in enumerate(gen):
-                if i == 480 * 640 / 2 - 640 / 2:
-                    x, y, z, rgb = p
-                    print " x : %f  y: %f  z: %f rgb: %f" % (x, y, z, rgb)
+                x, y, z, rgb = p
+                # if abs(x) < 0.00001:
+                # if i == 640*439 + 310:
+                if i == 640 * 439 + 350:
+                    x *= self.depth_unit * 1000
+                    y *= self.depth_unit * 1000
+                    z *= self.depth_unit * 1000
+                    print "i:%d | x : %f  y: %f  z: %f" % (i, x, y, z)
                     break
-
+                    
             d = self.depth_data * self.depth_unit * 1000
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-
-            cv2.imshow('', d)
+            cd = np.concatenate((d, self.rgb_data), axis=1)
+            cv2.imshow('', cd)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+
         cv2.destroyAllWindows()
 
     def depth_difference(self):
