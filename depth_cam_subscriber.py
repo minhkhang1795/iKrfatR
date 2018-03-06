@@ -20,7 +20,9 @@ import rospy
 from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import sensor_msgs.point_cloud2 as pc2
-import tf
+
+IMAGE_WIDTH = 640
+IMAGE_HEIGHT = 480
 
 
 class DepthCamTest:
@@ -33,7 +35,6 @@ class DepthCamTest:
                          queue_size=10)
         # rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.pointcloud_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
-        self.listener = tf.TransformListener()
         self.depth_unit = 0.000124986647279
         self.r = rospy.Rate(10)
         self.rgb_data = None
@@ -119,6 +120,51 @@ class DepthCamTest:
 
         cv2.destroyAllWindows()
 
+    def get_coord_from_pixel(self, pixel):
+        while self.point_cloud is None:
+            print "No point cloud found"
+
+        row, col = pixel
+        if row < 0 or col < 0 or row >= IMAGE_HEIGHT or col >= IMAGE_WIDTH:
+            print "Row {} and Col {} are invalid".format(row, col)
+            return
+
+        points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
+        for i, p in enumerate(points_gen):
+            if i == row * IMAGE_WIDTH + col:
+                x, y, z = p
+                x *= self.depth_unit * 1000
+                y *= self.depth_unit * 1000
+                z *= self.depth_unit * 1000
+                return [x, y, z]
+
+    def get_coords_from_pixels(self, pixels):
+        while self.point_cloud is None:
+            print "No point cloud found"
+
+        list = []
+        for i, pixel in enumerate(pixels):
+            row, col = pixel
+            if row < 0 or col < 0 or row >= IMAGE_HEIGHT or col >= IMAGE_WIDTH:
+                print "Row {} and Col {} are invalid".format(row, col)
+                continue
+            list.append(row * IMAGE_WIDTH + col)
+
+        coords = [None] * len(list)
+        count = 0
+        points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
+        for i, p in enumerate(points_gen):
+            if i in list:
+                x, y, z = p
+                x *= self.depth_unit * 1000
+                y *= self.depth_unit * 1000
+                z *= self.depth_unit * 1000
+                coords[count] = [x, y, z]
+                count += 1
+                if count == len(list):
+                    return coords
+        return coords
+
     def pointcloud_test(self):
         while self.point_cloud is None:
             pass
@@ -136,7 +182,7 @@ class DepthCamTest:
                     z *= self.depth_unit * 1000
                     print "i:%d | x : %f  y: %f  z: %f" % (i, x, y, z)
                     break
-                    
+
             d = self.depth_data * self.depth_unit * 1000
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
             cd = np.concatenate((d, self.rgb_data), axis=1)
@@ -162,4 +208,7 @@ if __name__ == '__main__':
     # test.show_depth()
     # test.show_align_depth_color()
     # test.show_all()
-    test.pointcloud_test()
+    # test.pointcloud_test()
+    # coord = test.get_coord_from_pixel([0, -3])
+    coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
+    print len(coord)
