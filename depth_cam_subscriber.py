@@ -150,20 +150,23 @@ class DepthCamTest:
                 continue
             list.append(row * IMAGE_WIDTH + col)
 
-        coords = [None] * len(list)
+        coords = []
         count = 0
         points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(points_gen):
             if i in list:
                 x, y, z = p
+                count += 1
                 x *= self.depth_unit * 1000
                 y *= self.depth_unit * 1000
                 z *= self.depth_unit * 1000
-                coords[count] = [x, y, z]
-                count += 1
+                if not np.math.isnan(x):
+                    coords.append([x, y, z])
                 if count == len(list):
                     return coords
         return coords
+
+    # def get_surface(self):
 
     def pointcloud_test(self):
         while self.point_cloud is None:
