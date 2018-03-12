@@ -20,9 +20,12 @@ import rospy
 from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import sensor_msgs.point_cloud2 as pc2
+import numpy
 
 IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
+MID_ROW = 236
+MID_COL = 310
 
 
 class DepthCamTest:
@@ -31,8 +34,6 @@ class DepthCamTest:
         rospy.init_node('my_node', anonymous=True)
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
-        rospy.Subscriber('/camera/aligned_depth_to_color/image_raw', Image, self.align_depth_color_callback,
-                         queue_size=10)
         # rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.pointcloud_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
         self.depth_unit = 0.000124986647279
@@ -41,6 +42,7 @@ class DepthCamTest:
         self.depth_data = None
         self.align_depth_color_data = None
         self.point_cloud = None
+        self.coordinate = {}
 
     def rgb_callback(self, data):
         try:
@@ -51,12 +53,6 @@ class DepthCamTest:
     def depth_callback(self, data):
         try:
             self.depth_data = self.bridge.imgmsg_to_cv2(data)
-        except CvBridgeError as e:
-            print e
-
-    def align_depth_color_callback(self, data):
-        try:
-            self.align_depth_color_data = self.bridge.imgmsg_to_cv2(data)
         except CvBridgeError as e:
             print e
 
@@ -81,20 +77,6 @@ class DepthCamTest:
         while not rospy.is_shutdown():
             self.r.sleep()
             d = self.depth_data * self.depth_unit * 1000
-            d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-
-            cv2.imshow('', d)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        cv2.destroyAllWindows()
-
-    def show_align_depth_color(self):
-        while self.align_depth_color_data is None:
-            pass
-
-        while not rospy.is_shutdown():
-            self.r.sleep()
-            d = self.align_depth_color_data * self.depth_unit * 1000
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
 
             cv2.imshow('', d)
@@ -166,7 +148,11 @@ class DepthCamTest:
                     return coords
         return coords
 
-    # def get_surface(self):
+    def rowcol_to_i(self, row, col):
+        return row * IMAGE_WIDTH + col
+
+    def i_to_rowcol(self, i):
+        return i / IMAGE_WIDTH, i % IMAGE_WIDTH
 
     def pointcloud_test(self):
         while self.point_cloud is None:
@@ -195,23 +181,41 @@ class DepthCamTest:
 
         cv2.destroyAllWindows()
 
-    def depth_difference(self):
-        while self.align_depth_color_data is None:
+    def find_height_angle(self):
+        while self.point_cloud is None:
             pass
 
-        while not rospy.is_shutdown():
-            self.r.sleep()
-            print (self.align_depth_color_data - self.depth_data).sum()
+        self.r.sleep()
+        gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
+        for i, p in enumerate(gen):
+            x, y, z = p
+            x *= self.depth_unit * 1000
+            y *= self.depth_unit * 1000
+            z *= self.depth_unit * 1000
+            row, col = self.i_to_rowcol(i)
+            self.coordinate[(row, col)] = [x, y, z]
+        a = self.coordinate[(MID_ROW, MID_COL)]
+        b = self.coordinate[(MID_ROW + MID_ROW / 2, MID_COL)]
+        ab = self.distance(a, b)
+        oa = a[2]
+        ob = b[2]
+        angle = numpy.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)) * 180 / numpy.pi
+        height = numpy.sin(angle*numpy.pi/180)*oa
+        return 90-angle, height
+
+    def distance(self, a, b):
+        return numpy.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
 
 
 if __name__ == '__main__':
     test = DepthCamTest()
-    # test.depth_difference()
+
     # test.show_rgb()
     # test.show_depth()
-    # test.show_align_depth_color()
     # test.show_all()
     # test.pointcloud_test()
     # coord = test.get_coord_from_pixel([0, -3])
-    coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
-    print len(coord)
+    # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
+    while True:
+        print test.find_height_angle()
+    # print len(coord)
