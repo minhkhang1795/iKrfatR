@@ -26,6 +26,7 @@ IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
 MID_ROW = 236
 MID_COL = 310
+DEPTH_UNIT = 0.124986647279
 
 
 class DepthCamTest:
@@ -34,9 +35,7 @@ class DepthCamTest:
         rospy.init_node('my_node', anonymous=True)
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
-        # rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.pointcloud_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
-        self.depth_unit = 0.000124986647279
         self.r = rospy.Rate(10)
         self.rgb_data = None
         self.depth_data = None
@@ -76,7 +75,7 @@ class DepthCamTest:
 
         while not rospy.is_shutdown():
             self.r.sleep()
-            d = self.depth_data * self.depth_unit * 1000
+            d = self.depth_data * DEPTH_UNIT
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
 
             cv2.imshow('', d)
@@ -90,7 +89,7 @@ class DepthCamTest:
 
         while not rospy.is_shutdown():
             self.r.sleep()
-            d = self.depth_data * self.depth_unit * 1000
+            d = self.depth_data * DEPTH_UNIT
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
             da = self.align_depth_color_data * self.depth_unit * 1000
             da = cv2.applyColorMap(da.astype(np.uint8), cv2.COLORMAP_RAINBOW)
@@ -115,9 +114,9 @@ class DepthCamTest:
         for i, p in enumerate(points_gen):
             if i == row * IMAGE_WIDTH + col:
                 x, y, z = p
-                x *= self.depth_unit * 1000
-                y *= self.depth_unit * 1000
-                z *= self.depth_unit * 1000
+                x *= DEPTH_UNIT
+                y *= DEPTH_UNIT
+                z *= DEPTH_UNIT
                 return [x, y, z]
 
     def get_coords_from_pixels(self, pixels):
@@ -139,9 +138,9 @@ class DepthCamTest:
             if i in list:
                 x, y, z = p
                 count += 1
-                x *= self.depth_unit * 1000
-                y *= self.depth_unit * 1000
-                z *= self.depth_unit * 1000
+                x *= DEPTH_UNIT
+                y *= DEPTH_UNIT
+                z *= DEPTH_UNIT
                 if not np.math.isnan(x):
                     coords.append([x, y, z])
                 if count == len(list):
@@ -166,13 +165,13 @@ class DepthCamTest:
                 # if abs(x) < 0.00001:
                 # if i == 640*439 + 310:
                 if i == 640 * 439 + 350:
-                    x *= self.depth_unit * 1000
-                    y *= self.depth_unit * 1000
-                    z *= self.depth_unit * 1000
+                    x *= DEPTH_UNIT
+                    y *= DEPTH_UNIT
+                    z *= DEPTH_UNIT
                     print "i:%d | x : %f  y: %f  z: %f" % (i, x, y, z)
                     break
 
-            d = self.depth_data * self.depth_unit * 1000
+            d = self.depth_data * DEPTH_UNIT
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
             cd = np.concatenate((d, self.rgb_data), axis=1)
             cv2.imshow('', cd)
@@ -189,9 +188,9 @@ class DepthCamTest:
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
             x, y, z = p
-            x *= self.depth_unit * 1000
-            y *= self.depth_unit * 1000
-            z *= self.depth_unit * 1000
+            x *= DEPTH_UNIT
+            y *= DEPTH_UNIT
+            z *= DEPTH_UNIT
             row, col = self.i_to_rowcol(i)
             self.coordinate[(row, col)] = [x, y, z]
         a = self.coordinate[(MID_ROW, MID_COL)]
@@ -200,8 +199,8 @@ class DepthCamTest:
         oa = a[2]
         ob = b[2]
         angle = numpy.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)) * 180 / numpy.pi
-        height = numpy.sin(angle*numpy.pi/180)*oa
-        return 90-angle, height
+        height = numpy.sin(angle * numpy.pi / 180) * oa
+        return 90 - angle, height
 
     def distance(self, a, b):
         return numpy.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
