@@ -149,8 +149,8 @@ class DepthCamTest:
         ab = self.distance(a, b)
         oa = a[2]
         ob = b[2]
-        angle = np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)) * 180 / np.pi
-        height = np.sin(angle * np.pi / 180) * oa
+        angle = np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
+        height = np.sin(np.radians(angle)) * oa
         return 90 - angle, height
 
     @staticmethod
