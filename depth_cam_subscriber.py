@@ -20,7 +20,6 @@ import rospy
 from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import sensor_msgs.point_cloud2 as pc2
-import numpy
 
 IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
@@ -150,8 +149,8 @@ class DepthCamTest:
         ab = self.distance(a, b)
         oa = a[2]
         ob = b[2]
-        angle = numpy.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)) * 180 / numpy.pi
-        height = numpy.sin(angle * numpy.pi / 180) * oa
+        angle = np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)) * 180 / np.pi
+        height = np.sin(angle * np.pi / 180) * oa
         return 90 - angle, height
 
     @staticmethod
@@ -164,7 +163,7 @@ class DepthCamTest:
 
     @staticmethod
     def distance(a, b):
-        return numpy.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
+        return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
 
     @staticmethod
     def get_xyz(p):
@@ -183,13 +182,10 @@ class DepthCamTest:
             self.r.sleep()
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
             for i, p in enumerate(gen):
-                x, y, z = p
                 # if abs(x) < 0.00001:
                 # if i == 640*439 + 310:
                 if i == 640 * 439 + 350:
-                    x *= DEPTH_UNIT
-                    y *= DEPTH_UNIT
-                    z *= DEPTH_UNIT
+                    x, y, z = self.get_xyz(p)
                     print "i:%d | x : %f  y: %f  z: %f" % (i, x, y, z)
                     break
 
