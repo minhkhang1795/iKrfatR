@@ -180,6 +180,7 @@ class DepthCamTest:
 
         while not rospy.is_shutdown():
             self.r.sleep()
+            pcl_ros.
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
             for i, p in enumerate(gen):
                 # if abs(x) < 0.00001:
@@ -197,6 +198,7 @@ class DepthCamTest:
                 break
 
         cv2.destroyAllWindows()
+
 
 
 if __name__ == '__main__':
