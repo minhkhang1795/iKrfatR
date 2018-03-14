@@ -20,11 +20,14 @@ import rospy
 import sensor_msgs.point_cloud2 as pc2
 from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
+import transformation
 
 IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
-MID_ROW = 236
-MID_COL = 310
+# MID_ROW = 236
+# MID_COL = 310
+MID_ROW = 218
+MID_COL = 292
 DEPTH_UNIT = 0.124986647279
 
 
@@ -101,7 +104,13 @@ class DepthCamSubscriber:
         for i, p in enumerate(gen):
             x, y, z = self.get_xyz(p)
             self._coords[i] = np.asarray([x, y, z])
+        return self._coords
 
+    def get_transformed_coords(self):
+        self.get_coords()
+        if not np.math.isnan(self.height):
+            return transformation.transformPointCloud(self._coords, self.angle, self.height)
+        print "No angle found, returns original coordinates"
         return self._coords
 
     def get_coord_from_pixel(self, pixel):
@@ -159,7 +168,7 @@ class DepthCamSubscriber:
         oa = a[2]
         ob = b[2]
         angle = 90 - np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
-        height = np.sin(np.radians(angle)) * oa
+        height = np.cos(np.radians(angle)) * oa
         if not np.math.isnan(height):
             self.angle = angle
             self.height = height
@@ -197,25 +206,34 @@ class DepthCamSubscriber:
         while self.point_cloud is None:
             pass
 
-        while not rospy.is_shutdown():
+        # while not rospy.is_shutdown():
+
+        f = True
+        while f:
             self.r.sleep()
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
             for i, p in enumerate(gen):
-                # if abs(x) < 0.00001:
-                # if i == 640*439 + 310:
-                if i == 640 * 439 + 350:
-                    x, y, z = self.get_xyz(p)
-                    print "i:%d | x : %f  y: %f  z: %f" % (i, x, y, z)
-                    break
+                x, y, z = self.get_xyz(p)
+                if abs(x) < 0.00001 and abs(y) < 0.0009:
+                    # if i == 640*439 + 310:
+                    # if i == 640 * 439 + 350:
+                    row, col = self.i_to_rowcol(i)
+                    print "row:%d col:%d | x : %f  y: %f  z: %f" % (row, col, x, y, z)
+                    f = False
 
-            d = self.depth_data * DEPTH_UNIT
-            d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
-            cd = np.concatenate((d, self.rgb_data), axis=1)
-            cv2.imshow('', cd)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
+            # d = self.depth_data * DEPTH_UNIT
+            # d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
+            # cd = np.concatenate((d, self.rgb_data), axis=1)
+            # cv2.imshow('', cd)
+            # if cv2.waitKey(1) & 0xFF == ord('q'):
+            #     break
+        # cv2.destroyAllWindows()
 
-        cv2.destroyAllWindows()
+    def test_transform_coords(self):
+        print self.find_height_angle()
+        coords = self.get_transformed_coords()
+        print "transformed", coords[self.rowcol_to_i(MID_ROW, MID_COL)]
+        print "original", self._coords[self.rowcol_to_i(MID_ROW, MID_COL)]
 
 
 if __name__ == '__main__':
@@ -226,6 +244,7 @@ if __name__ == '__main__':
     # test.test_pointcloud()
     # coord = test.get_coord_from_pixel([0, -3])
     # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
-    while True:
-        angle, height = test.find_height_angle()
-        print angle, height
+    # while True:
+    #     angle, height = test.find_height_angle()
+    #     print angle, height
+    test.test_transform_coords()
