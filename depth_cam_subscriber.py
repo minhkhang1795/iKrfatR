@@ -39,7 +39,7 @@ class DepthCamSubscriber:
         self.rgb_data = None
         self.depth_data = None
         self.point_cloud = None
-        self.coords = {}
+        self._coords = [None] * IMAGE_HEIGHT * IMAGE_WIDTH
         self.angle = None
         self.height = None
 
@@ -96,6 +96,14 @@ class DepthCamSubscriber:
                 break
         cv2.destroyAllWindows()
 
+    def get_coords(self):
+        gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
+        for i, p in enumerate(gen):
+            x, y, z = self.get_xyz(p)
+            self._coords[i] = np.asarray([x, y, z])
+
+        return self._coords
+
     def get_coord_from_pixel(self, pixel):
         while self.point_cloud is None:
             print "No point cloud found"
@@ -143,11 +151,10 @@ class DepthCamSubscriber:
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
             x, y, z = self.get_xyz(p)
-            row, col = self.i_to_rowcol(i)
-            self.coords[(row, col)] = [x, y, z]
+            self._coords[i] = np.asarray([x, y, z])
 
-        a = self.coords[(MID_ROW, MID_COL)]
-        b = self.coords[(MID_ROW + MID_ROW / 2, MID_COL)]
+        a = self._coords[self.rowcol_to_i(MID_ROW, MID_COL)]
+        b = self._coords[self.rowcol_to_i(MID_ROW + MID_ROW / 2, MID_COL)]
         ab = self.distance(a, b)
         oa = a[2]
         ob = b[2]
@@ -168,6 +175,12 @@ class DepthCamSubscriber:
 
     @staticmethod
     def distance(a, b):
+        """
+
+        :param a: numpy array
+        :param b: numpy array
+        :return: Distance between two points
+        """
         return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
 
     @staticmethod
@@ -213,10 +226,6 @@ if __name__ == '__main__':
     # test.test_pointcloud()
     # coord = test.get_coord_from_pixel([0, -3])
     # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
-    # while True:
-    #     angle, height = test.find_height_angle()
-    #     print angle, height
-    #     if height > 0:
-    #         break
-    #     test.r.sleep()
-
+    while True:
+        angle, height = test.find_height_angle()
+        print angle, height
