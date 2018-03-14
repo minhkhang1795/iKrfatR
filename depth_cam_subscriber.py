@@ -17,10 +17,9 @@ import numpy as np
 
 import cv2
 import rospy
+import sensor_msgs.point_cloud2 as pc2
 from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
-import sensor_msgs.point_cloud2 as pc2
-import cv2 as cv
 
 IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
@@ -29,10 +28,10 @@ MID_COL = 310
 DEPTH_UNIT = 0.124986647279
 
 
-class DepthCamTest:
+class DepthCamSubscriber:
     def __init__(self):
         self.bridge = CvBridge()
-        rospy.init_node('my_node', anonymous=True)
+        rospy.init_node('depth_cam', anonymous=True)
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
@@ -41,6 +40,8 @@ class DepthCamTest:
         self.depth_data = None
         self.point_cloud = None
         self.coords = {}
+        self.angle = None
+        self.height = None
 
     def rgb_callback(self, data):
         try:
@@ -150,9 +151,12 @@ class DepthCamTest:
         ab = self.distance(a, b)
         oa = a[2]
         ob = b[2]
-        angle = np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
+        angle = 90 - np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
         height = np.sin(np.radians(angle)) * oa
-        return 90 - angle, height
+        if not np.math.isnan(height):
+            self.angle = angle
+            self.height = height
+        return angle, height
 
     @staticmethod
     def rowcol_to_i(row, col):
@@ -182,7 +186,6 @@ class DepthCamTest:
 
         while not rospy.is_shutdown():
             self.r.sleep()
-            pcl_ros.
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
             for i, p in enumerate(gen):
                 # if abs(x) < 0.00001:
@@ -202,45 +205,8 @@ class DepthCamTest:
         cv2.destroyAllWindows()
 
 
-class ColorTracker(object):
-    def __init__(self):
-        self.bs = 0
-
-    def find_bounding_boxes(self, img, display=True):
-        """
-        Input: OpenCV image (numpy array)
-        Output: List of bounding boxes (topleft, bottomright, isRed)
-        """
-        # Get bounding boxes around red and green rectangles
-        image =  cv2.GaussianBlur(img,(5,5),3)
-        hsv_image = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-        edges = cv2.Canny(image, 60, 60)
-        binary_image = self.get_bounding_boxes(hsv_image)
-        print()
-        im, contours, hierarchy = cv2.findContours(edges, 1, 2)
-        cnt = contours[0]
-        cv2.drawContours(image, contours, -1, (0, 255, 0), 3)
-
-        # Remove noise
-        kernel = np.ones((5, 5), np.uint8)
-        binary_image = cv2.morphologyEx(binary_image, cv2.MORPH_OPEN, kernel)
-
-        if display:
-            cv2.imshow("Binary Image With Morphology", binary_image)
-            cv2.imshow("Original images", image)
-            cv2.imshow("HSV image", hsv_image)
-            cv2.imshow('edge', edges)
-            cv2.waitKey(0)
-        return binary_image
-
-    def get_bounding_boxes(self, hsv_image):
-        binary_image1 = cv2.inRange(hsv_image, np.array([10, 60, 60], dtype="uint8"),
-                                    np.array([30, 255, 255], dtype="uint8"))
-        return cv2.bitwise_or(binary_image1, binary_image1)
-
-
 if __name__ == '__main__':
-    # test = DepthCamTest()
+    test = DepthCamSubscriber()
     # test.show_rgb()
     # test.show_depth()
     # test.show_all()
@@ -253,5 +219,4 @@ if __name__ == '__main__':
     #     if height > 0:
     #         break
     #     test.r.sleep()
-    tracker = ColorTracker()
-    binary_image = tracker.find_bounding_boxes(cv2.imread("2.jpg"), True)
+
