@@ -22,8 +22,6 @@ from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import transformation
 
-# MID_ROW = 236
-# MID_COL = 310
 MID_ROW_D400 = 238
 MID_COL_D400 = 315
 DEPTH_UNIT_D400 = 0.001
@@ -32,7 +30,7 @@ OFFSET_D400 = 0
 MID_ROW_SR300 = 218
 MID_COL_SR300 = 292
 DEPTH_UNIT_SR300 = 0.124986647279
-OFFSET_SR300 = 0.5
+OFFSET_SR300 = 0.005
 
 
 class CameraType:
@@ -58,14 +56,10 @@ class DepthCamSubscriber:
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
-        self.cam = CameraType()
+        self.cam = CameraType(type="sr300")
         self.r = rospy.Rate(10)
-        self.rgb_data = None
-        self.depth_data = None
-        self.point_cloud = None
+        self.rgb_data = self.depth_data = self.point_cloud = self.angle = self.height = None
         self._coords = [None] * self.cam.IMAGE_HEIGHT * self.cam.IMAGE_WIDTH
-        self.angle = None
-        self.height = None
 
     def rgb_callback(self, data):
         try:
@@ -123,7 +117,7 @@ class DepthCamSubscriber:
     def get_coords(self):
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
-            self._coords[i] = self.get_xyz(p)
+            self._coords[i] = self.get_xyz_numpy(p)
         return self._coords
 
     def get_transformed_coords(self):
@@ -145,7 +139,7 @@ class DepthCamSubscriber:
         points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(points_gen):
             if i == self.rowcol_to_i(row, col):
-                return self.get_xyz(p)
+                return self.get_xyz_numpy(p)
 
     def get_coords_from_pixels(self, pixels):
         while self.point_cloud is None:
@@ -164,7 +158,7 @@ class DepthCamSubscriber:
         points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(points_gen):
             if i in list:
-                coord = self.get_xyz(p)
+                coord = self.get_xyz_numpy(p)
                 count += 1
                 if not np.math.isnan(coord[0]):
                     coords.append(coord)
@@ -178,7 +172,7 @@ class DepthCamSubscriber:
 
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
-            self._coords[i] = self.get_xyz(p)
+            self._coords[i] = self.get_xyz_numpy(p)
 
         a = self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         b = self._coords[self.rowcol_to_i(self.cam.MID_ROW + self.cam.MID_ROW / 4, self.cam.MID_COL)]
@@ -189,13 +183,18 @@ class DepthCamSubscriber:
         angle = 90 - np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
         height = np.cos(np.radians(angle)) * oa
         if not np.math.isnan(height):
-            self.angle = angle
-            self.height = height
+            self.angle, self.height = angle, height
         return angle, height
 
     def get_xyz(self, p):
         x, y, z = p
-        return np.asarray([x, y, z]) * self.cam.DEPTH_UNIT + self.cam.OFFSET
+        x = x * self.cam.DEPTH_UNIT + self.cam.OFFSET
+        y = y * self.cam.DEPTH_UNIT + self.cam.OFFSET
+        z = z * self.cam.DEPTH_UNIT + self.cam.OFFSET
+        return x, y, z
+
+    def get_xyz_numpy(self, p):
+        return np.asarray(self.get_xyz(p))
 
     def rowcol_to_i(self, row, col):
         return row * self.cam.IMAGE_WIDTH + col
@@ -206,10 +205,9 @@ class DepthCamSubscriber:
     @staticmethod
     def distance(a, b):
         """
-
         :param a: numpy array
         :param b: numpy array
-        :return: Distance between two points
+        :return: Distance between two points in 2D
         """
         return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
 
@@ -225,13 +223,10 @@ class DepthCamSubscriber:
             self.r.sleep()
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
             for i, p in enumerate(gen):
-                x, y, z = self.get_xyz(p)
-                if abs(x) < 0.0001 and abs(y) < 0.0009 and min > abs(x) + abs(y):
+                x, y, z = self.get_xyz_numpy(p)
+                if min > abs(x) + abs(y):
                     row, col = self.i_to_rowcol(i)
-                    min_row = row
-                    min_col = col
-                    min_x = x
-                    min_y = y
+                    min_row, min_col, min_x, min_y = row, col, x, y
                     min = abs(x) + abs(y)
                     # print "row:%d col:%d | x : %f  y: %f  z: %f" % (row, col, x, y, z)
             print "row:%d col:%d | x : %f  y: %f " % (min_row, min_col, min_x, min_y)
@@ -254,8 +249,8 @@ if __name__ == '__main__':
     test = DepthCamSubscriber()
     # test.show_rgb()
     # test.show_depth()
-    test.show_all()
-    test.test_pointcloud()
+    # test.show_all()
+    # test.test_pointcloud()
     # coord = test.get_coord_from_pixel([0, -3])
     # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
     while True:
