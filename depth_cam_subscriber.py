@@ -1,6 +1,6 @@
 """
 By Khang Vu & Sherrie Shen, 2018
-Last Modified Feb 20, 2018
+Last Modified Mar 19, 2018
 
 The script ...
 
@@ -123,7 +123,7 @@ class DepthCamSubscriber:
     def get_coords(self):
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
-            self._coords[i] = np.asarray([self.get_xyz(p)])
+            self._coords[i] = self.get_xyz(p)
         return self._coords
 
     def get_transformed_coords(self):
@@ -144,9 +144,8 @@ class DepthCamSubscriber:
 
         points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(points_gen):
-            if i == row * self.cam.IMAGE_WIDTH + col:
-                x, y, z = self.get_xyz(p)
-                return [x, y, z]
+            if i == self.rowcol_to_i(row, col):
+                return self.get_xyz(p)
 
     def get_coords_from_pixels(self, pixels):
         while self.point_cloud is None:
@@ -158,17 +157,17 @@ class DepthCamSubscriber:
             if row < 0 or col < 0 or row >= self.cam.IMAGE_HEIGHT or col >= self.cam.IMAGE_WIDTH:
                 print "Row {} and Col {} are invalid".format(row, col)
                 continue
-            list.append(row * self.cam.IMAGE_WIDTH + col)
+            list.append(self.rowcol_to_i(row, col))
 
         coords = []
         count = 0
         points_gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(points_gen):
             if i in list:
-                x, y, z = self.get_xyz(p)
+                coord = self.get_xyz(p)
                 count += 1
-                if not np.math.isnan(x):
-                    coords.append([x, y, z])
+                if not np.math.isnan(coord[0]):
+                    coords.append(coord)
                 if count == len(list):
                     break
         return coords
@@ -179,11 +178,11 @@ class DepthCamSubscriber:
 
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
-            self._coords[i] = np.asarray([self.get_xyz(p)])
+            self._coords[i] = self.get_xyz(p)
 
         a = self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         b = self._coords[self.rowcol_to_i(self.cam.MID_ROW + self.cam.MID_ROW / 4, self.cam.MID_COL)]
-        o = [0, 0, 0]
+        o = np.asarray([0, 0, 0])
         ab = self.distance(a, b)
         oa = self.distance(o, a)
         ob = self.distance(o, b)
@@ -193,6 +192,10 @@ class DepthCamSubscriber:
             self.angle = angle
             self.height = height
         return angle, height
+
+    def get_xyz(self, p):
+        x, y, z = p
+        return np.asarray([x, y, z]) * self.cam.DEPTH_UNIT + self.cam.OFFSET
 
     def rowcol_to_i(self, row, col):
         return row * self.cam.IMAGE_WIDTH + col
@@ -210,25 +213,13 @@ class DepthCamSubscriber:
         """
         return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
 
-    def get_xyz(self, p):
-        x, y, z = p
-        x = x * self.cam.DEPTH_UNIT + self.cam.OFFSET
-        y = y * self.cam.DEPTH_UNIT + self.cam.OFFSET
-        z = z * self.cam.DEPTH_UNIT + self.cam.OFFSET
-        return x, y, z
-
     """ TESTING FUNCTIONS """
 
     def test_pointcloud(self):
         while self.point_cloud is None:
             pass
 
-        # while not rospy.is_shutdown():
-
-        min_row = 0
-        min_col = 0
-        min_x = 0
-        min_y = 0
+        min_row = min_col = min_x = min_y = 0
         min = 1000
         while not rospy.is_shutdown():
             self.r.sleep()
@@ -264,7 +255,7 @@ if __name__ == '__main__':
     # test.show_rgb()
     # test.show_depth()
     test.show_all()
-    # test.test_pointcloud()
+    test.test_pointcloud()
     # coord = test.get_coord_from_pixel([0, -3])
     # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
     while True:
