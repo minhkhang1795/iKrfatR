@@ -26,9 +26,14 @@ IMAGE_WIDTH = 640
 IMAGE_HEIGHT = 480
 # MID_ROW = 236
 # MID_COL = 310
-MID_ROW = 218
-MID_COL = 292
-DEPTH_UNIT = 0.124986647279
+MID_ROW_D400 = 238
+MID_COL_D400 = 315
+DEPTH_UNIT_D400 = 0.001
+OFFSET_D400 = 0
+OFFSET_RS300 = 0.5
+MID_ROW_RS300 = 218
+MID_COL_RS300 = 292
+DEPTH_UNIT_RS300 = 0.124986647279
 
 
 class DepthCamSubscriber:
@@ -38,6 +43,7 @@ class DepthCamSubscriber:
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
+        # rospy.Subscriber('/camera/depth/color/points', PointCloud2, self.pointcloud_callback, queue_size=10)
         self.r = rospy.Rate(10)
         self.rgb_data = None
         self.depth_data = None
@@ -78,7 +84,7 @@ class DepthCamSubscriber:
 
         while not rospy.is_shutdown():
             self.r.sleep()
-            d = self.depth_data * DEPTH_UNIT
+            d = self.depth_data * DEPTH_UNIT_RS300
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
             cv2.imshow('Depth Image', d)
             if cv2.waitKey(1) & 0xFF == ord('q'):
@@ -91,7 +97,7 @@ class DepthCamSubscriber:
 
         while not rospy.is_shutdown():
             self.r.sleep()
-            d = self.depth_data * DEPTH_UNIT
+            d = self.depth_data * DEPTH_UNIT_RS300
             d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
             dc = np.concatenate((d, self.rgb_data), axis=1)
             cv2.imshow('RGB & Depth Image', dc)
@@ -162,11 +168,13 @@ class DepthCamSubscriber:
             x, y, z = self.get_xyz(p)
             self._coords[i] = np.asarray([x, y, z])
 
-        a = self._coords[self.rowcol_to_i(MID_ROW, MID_COL)]
-        b = self._coords[self.rowcol_to_i(MID_ROW + MID_ROW / 2, MID_COL)]
+        a = self._coords[self.rowcol_to_i(MID_ROW_D400, MID_COL_D400)]
+        b = self._coords[self.rowcol_to_i(MID_ROW_D400 + MID_ROW_D400 / 4, MID_COL_D400)]
+        o = [0, 0, 0]
         ab = self.distance(a, b)
-        oa = a[2]
-        ob = b[2]
+        oa = self.distance(o, a)
+        ob = self.distance(o, b)
+        print a, b
         angle = 90 - np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
         height = np.cos(np.radians(angle)) * oa
         if not np.math.isnan(height):
@@ -195,9 +203,9 @@ class DepthCamSubscriber:
     @staticmethod
     def get_xyz(p):
         x, y, z = p
-        x = x * DEPTH_UNIT + 0.005
-        y = y * DEPTH_UNIT + 0.005
-        z = z * DEPTH_UNIT + 0.005
+        x = x * DEPTH_UNIT_D400 + OFFSET_D400
+        y = y * DEPTH_UNIT_D400 + OFFSET_D400
+        z = z * DEPTH_UNIT_D400 + OFFSET_D400
         return x, y, z
 
     """ TESTING FUNCTIONS """
@@ -208,19 +216,29 @@ class DepthCamSubscriber:
 
         # while not rospy.is_shutdown():
 
+        min_row = 0
+        min_col = 0
+        min_x = 0
+        min_y = 0
+        min = 1000
         f = True
         while f:
             self.r.sleep()
             gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
             for i, p in enumerate(gen):
                 x, y, z = self.get_xyz(p)
-                if abs(x) < 0.00001 and abs(y) < 0.0009:
+                if abs(x) < 0.0001 and abs(y) < 0.0009 and min > abs(x) + abs(y):
                     # if i == 640*439 + 310:
                     # if i == 640 * 439 + 350:
                     row, col = self.i_to_rowcol(i)
-                    print "row:%d col:%d | x : %f  y: %f  z: %f" % (row, col, x, y, z)
-                    f = False
-
+                    min_row = row
+                    min_col = col
+                    min_x = x
+                    min_y = y
+                    min = abs(x) + abs(y)
+                    # print "row:%d col:%d | x : %f  y: %f  z: %f" % (row, col, x, y, z)
+                    # f = False
+            print "row:%d col:%d | x : %f  y: %f " % (min_row, min_col, min_x, min_y)
             # d = self.depth_data * DEPTH_UNIT
             # d = cv2.applyColorMap(d.astype(np.uint8), cv2.COLORMAP_RAINBOW)
             # cd = np.concatenate((d, self.rgb_data), axis=1)
@@ -232,19 +250,19 @@ class DepthCamSubscriber:
     def test_transform_coords(self):
         print self.find_height_angle()
         coords = self.get_transformed_coords()
-        print "transformed", coords[self.rowcol_to_i(MID_ROW, MID_COL)]
-        print "original", self._coords[self.rowcol_to_i(MID_ROW, MID_COL)]
+        print "transformed", coords[self.rowcol_to_i(MID_ROW_RS300, MID_COL_RS300)]
+        print "original", self._coords[self.rowcol_to_i(MID_ROW_RS300, MID_COL_RS300)]
 
 
 if __name__ == '__main__':
     test = DepthCamSubscriber()
     # test.show_rgb()
     # test.show_depth()
-    # test.show_all()
+    test.show_all()
     # test.test_pointcloud()
     # coord = test.get_coord_from_pixel([0, -3])
     # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
-    # while True:
-    #     angle, height = test.find_height_angle()
-    #     print angle, height
-    test.test_transform_coords()
+    while True:
+        angle, height = test.find_height_angle()
+        print angle, height
+    # test.test_transform_coords()
