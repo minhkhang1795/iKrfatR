@@ -26,7 +26,7 @@ import transformation
 class CameraType:
     MID_ROW_D400 = 238
     MID_COL_D400 = 315
-    DEPTH_UNIT_D400 = 0.001
+    DEPTH_UNIT_D400 = 1
     OFFSET_D400 = 0
 
     MID_ROW_SR300 = 218
@@ -56,7 +56,7 @@ class DepthCamSubscriber:
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
-        self.cam = CameraType(type="sr300")
+        self.cam = CameraType()
         self.r = rospy.Rate(10)
         self.rgb_data = self.depth_data = self.point_cloud = self.angle = self.height = None
         self._coords = [None] * self.cam.IMAGE_HEIGHT * self.cam.IMAGE_WIDTH
@@ -240,17 +240,20 @@ class DepthCamSubscriber:
         coords = self.get_transformed_coords()
         print "transformed", coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         print "original", self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
+        np.savetxt('coords_5.txt', coords, fmt='%f')
 
 
 if __name__ == '__main__':
     test = DepthCamSubscriber()
     # test.show_rgb()
     # test.show_depth()
-    # test.show_all()
+    test.show_all()
     # test.test_pointcloud()
     # coord = test.get_coord_from_pixel([0, -3])
     # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
     while True:
         angle, height = test.find_height_angle()
         print angle, height
-    # test.test_transform_coords()
+        if angle:
+            break
+    test.test_transform_coords()
