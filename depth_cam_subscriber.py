@@ -170,10 +170,7 @@ class DepthCamSubscriber:
         while self.point_cloud is None:
             pass
 
-        gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
-        for i, p in enumerate(gen):
-            self._coords[i] = self.get_xyz_numpy(p)
-
+        self.get_coords()
         a = self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         b = self._coords[self.rowcol_to_i(self.cam.MID_ROW + self.cam.MID_ROW / 4, self.cam.MID_COL)]
         o = np.asarray([0, 0, 0])
