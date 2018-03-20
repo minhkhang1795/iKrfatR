@@ -22,29 +22,29 @@ from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import transformation
 
-MID_ROW_D400 = 238
-MID_COL_D400 = 315
-DEPTH_UNIT_D400 = 0.001
-OFFSET_D400 = 0
-
-MID_ROW_SR300 = 218
-MID_COL_SR300 = 292
-DEPTH_UNIT_SR300 = 0.124986647279
-OFFSET_SR300 = 0.005
-
 
 class CameraType:
+    MID_ROW_D400 = 238
+    MID_COL_D400 = 315
+    DEPTH_UNIT_D400 = 0.001
+    OFFSET_D400 = 0
+
+    MID_ROW_SR300 = 218
+    MID_COL_SR300 = 292
+    DEPTH_UNIT_SR300 = 0.124986647279
+    OFFSET_SR300 = 0.005
+
     def __init__(self, type="D400", width=640, height=480):
         if type is "D400":
-            self.MID_ROW = MID_ROW_D400
-            self.MID_COL = MID_COL_D400
-            self.DEPTH_UNIT = DEPTH_UNIT_D400
-            self.OFFSET = OFFSET_D400
+            self.MID_ROW = CameraType.MID_ROW_D400
+            self.MID_COL = CameraType.MID_COL_D400
+            self.DEPTH_UNIT = CameraType.DEPTH_UNIT_D400
+            self.OFFSET = CameraType.OFFSET_D400
         else:
-            self.MID_ROW = MID_ROW_SR300
-            self.MID_COL = MID_COL_SR300
-            self.DEPTH_UNIT = DEPTH_UNIT_SR300
-            self.OFFSET = OFFSET_SR300
+            self.MID_ROW = CameraType.MID_ROW_SR300
+            self.MID_COL = CameraType.MID_COL_SR300
+            self.DEPTH_UNIT = CameraType.DEPTH_UNIT_SR300
+            self.OFFSET = CameraType.OFFSET_SR300
         self.IMAGE_WIDTH = width
         self.IMAGE_HEIGHT = height
 
