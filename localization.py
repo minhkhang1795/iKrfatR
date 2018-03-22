@@ -27,9 +27,8 @@ def reduced_coords(coords, cube_size):
         # TODO: y coordinate to -y
         coord[1] = -coord[1]
         x, y, z = coord
-        if cube_size / 2 <= y <= cube_size * 5:
+        if 3 * cube_size / 4 <= y <= cube_size * 5 + cube_size / 4:
             r_coords.append(coord)
-
     return np.asarray(r_coords)
 
 
@@ -92,16 +91,19 @@ def check_cubes(coords, level, cube_size):
     :return: COM of the cube; empty [] if there is no cube
     """
     cubes = []
-    min_z = max_z = None
+    min_z = max_z_left = max_z_right = None
     min_x, max_x = coords[0][0], coords[-1][0]
 
     for coord in coords:
         x, y, z = coord
         if min_z > z or min_z is None:
             min_z = z
-        if abs(max_x - x) <= cube_size/2 and (max_z <= z or max_z is None):
-            max_z = z
+        if abs(min_x - x) <= cube_size / 2 and (max_z_left <= z or max_z_left is None):
+            max_z_left = z
+        if abs(max_x - x) <= cube_size / 2 and (max_z_right <= z or max_z_right is None):
+            max_z_right = z
 
+    max_z = (max_z_left + max_z_right) / 2
     coord_area = abs(max_x - min_x) * abs(max_z - min_z)
     total_area = cube_size * cube_size
     if coord_area >= 0.8 * total_area:
