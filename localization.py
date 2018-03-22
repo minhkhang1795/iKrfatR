@@ -1,99 +1,124 @@
 """
 By Khang Vu, 2018
+Last Modified Mar 22, 2018
 
-Given transformed coordinates and cubes' size, this scripts tries to
+Given transformed coordinates and the cube's size, this scripts tries to
 estimate the locations of the cubes
 """
 import numpy as np
 
-CUBE_SIZE_SMALL = 0.037  # in m
-CUBE_SIZE_LARGE = 0.086  # in m
+CUBE_SIZE_SMALL = 0.037  # in meter
+CUBE_SIZE_LARGE = 0.086  # in meter
 
 
 def cube_localization(coords, cube_size=CUBE_SIZE_SMALL):
-    r_coords = reduced_coords(coords, cube_size)
+    """
+    Main function: given point cloud coordinates and the cube's size
+    Return the COMs of the cubes
+    :param coords: 3D point cloud coordinates
+    :param cube_size: size of the cube
+    :return: numpy array of COM (x, y, z) of the cubes
+    """
     cube_coords = []
-    level = 1
-    while level <= 5:
-        cubes, r_coords = find_cubes_at_height(r_coords, level, cube_size)
+
+    # Reduce coordinates by only focusing on cubes
+    r_coords = reduced_coords(coords, cube_size)
+
+    # Assume that the structure is not taller than 5 cubes
+    height_level = 1
+    while height_level <= 5:
+        cubes, r_coords = find_cubes_at_height(r_coords, height_level, cube_size)
         cube_coords.extend(cubes)
-        level += 1
+        height_level += 1
     return np.asarray(cube_coords)
 
 
 def reduced_coords(coords, cube_size):
+    """
+    Eliminate coordinates that are unlikely to form the cubes
+    For now, limit the height of coordinates from 0.75 x cube_size to 5.25 x cube_size
+    :param coords: full coordinates
+    :param cube_size: size of the cube
+    :return: reduced coordinates
+    """
     r_coords = []
     for coord in coords:
         # TODO: y coordinate to -y
         coord[1] = -coord[1]
         x, y, z = coord
-        if 3 * cube_size / 4 <= y <= cube_size * 5 + cube_size / 4:
+        if 0.75 * cube_size <= y <= 5.25 * cube_size:
             r_coords.append(coord)
     return np.asarray(r_coords)
 
 
-def find_cubes_at_height(r_coords, level, cube_size):
+def find_cubes_at_height(r_coords, height_level, cube_size):
     cubes = []
 
-    # Find coords at y_max level
+    # Find all coords at y level, and remove those coords from the reduced_coords
     coords_at_y = []
     i_remove_list = []
     for i, coord in enumerate(r_coords):
-        if abs(coord[1] - level * cube_size) <= 0.005:
+        if abs(coord[1] - height_level * cube_size) <= 0.005:
             coords_at_y.append(coord)
             i_remove_list.append(i)
-    r_coords = np.delete(r_coords, i_remove_list, axis=0)
     coords_at_y = np.asarray(coords_at_y)
+    r_coords = np.delete(r_coords, i_remove_list, axis=0)
 
-    # Sort in-place by z
+    # Sort the new coords in-place by z
     coords_at_y.view('float64,float64,float64').sort(order=['f2'], axis=0)
     while coords_at_y.size != 0:
-        # Find coords from z_min to z_min + cube_size
-        coords_at_z = []
+        # Find all coords from z_min to z_min + cube_size, and remove those coords from coords_at_y
+        coords_at_yz = []
         z_min = coords_at_y[0][2]
         i_remove_list = []
         for i, coord in enumerate(coords_at_y):
             x, y, z = coord
             if z - z_min <= cube_size:
-                coords_at_z.append(coord)
+                coords_at_yz.append(coord)
                 i_remove_list.append(i)
             else:
                 break
+        coords_at_yz = np.asarray(coords_at_yz)
         coords_at_y = np.delete(coords_at_y, i_remove_list, axis=0)
-        coords_at_z = np.asarray(coords_at_z)
 
-        # Sort in-place by x
-        coords_at_z.view('float64,float64,float64').sort(order=['f0'], axis=0)
-        while coords_at_z.size != 0:
-            # Find coords from x_min to x_min + cube_size
-            coords_at_x = []
-            x_min = coords_at_z[0][0]
+        # Sort the new coords in-place by x
+        coords_at_yz.view('float64,float64,float64').sort(order=['f0'], axis=0)
+        while coords_at_yz.size != 0:
+            # Find coords from x_min to x_min + cube_size, and remove those coords from coords_at_yz
+            coords_at_yzx = []
+            x_min = coords_at_yz[0][0]
             i_remove_list = []
-            for i, coord in enumerate(coords_at_z):
+            for i, coord in enumerate(coords_at_yz):
                 x, y, z = coord
                 if x - x_min <= cube_size:
-                    coords_at_x.append(coord)
+                    coords_at_yzx.append(coord)
                     i_remove_list.append(i)
                 else:
                     break
-            coords_at_z = np.delete(coords_at_z, i_remove_list, axis=0)
-            cubes.extend(check_cubes(coords_at_x, level, cube_size))
+            coords_at_yz = np.delete(coords_at_yz, i_remove_list, axis=0)
+
+            # After limit all the point cloud to coords_at_yzx,
+            # check if those coords form the top surface of a pile of cubes
+            new_cubes = check_cubes(coords_at_yzx, height_level, cube_size)
+            cubes.extend(new_cubes)
 
     return cubes, r_coords
 
 
-def check_cubes(coords, level, cube_size):
+def check_cubes(coords, height_level, cube_size):
     """
-
-    :param coords: these coords should make a cube
-    :param level: height level
+    Check if the given coords can form the top surface of a cube.
+    If so, return a list of cubes from the top level to the bottom
+    :param coords: coords sorted by x that might make a cube
+    :param height_level: height level
     :param cube_size: size of the cube
-    :return: COM of the cube; empty [] if there is no cube
+    :return: list of COMs of the cubes; empty list if there is no cube
     """
     cubes = []
     min_z = max_z_left = max_z_right = None
     min_x, max_x = coords[0][0], coords[-1][0]
 
+    # Find min_z, max_z_left, max_z_right
     for coord in coords:
         x, y, z = coord
         if min_z > z or min_z is None:
@@ -103,17 +128,19 @@ def check_cubes(coords, level, cube_size):
         if abs(max_x - x) <= cube_size / 2 and (max_z_right <= z or max_z_right is None):
             max_z_right = z
 
+    # max_z_left and max_z_right should not be much different.
+    # If they are different, then the top surface area will be small, hence not a cube
     max_z = (max_z_left + max_z_right) / 2
     coord_area = abs(max_x - min_x) * abs(max_z - min_z)
-    total_area = cube_size * cube_size
-    if coord_area >= 0.8 * total_area:
+    expected_area = cube_size * cube_size
+    if coord_area >= 0.8 * expected_area:
         cube_x = (min_x + max_x) / 2
         cube_z = (min_z + max_z) / 2
-        while level >= 1:
-            cube_y = (level - 1) * cube_size + cube_size / 2
+        while height_level >= 1:
+            cube_y = (height_level - 1) * cube_size + cube_size / 2
             cube = np.asarray([cube_x, cube_y, cube_z])
             cubes.append(cube)
-            level -= 1
+            height_level -= 1
     return cubes
 
 

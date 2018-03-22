@@ -1,6 +1,6 @@
 """
 By Khang Vu & Sherrie Shen, 2018
-Last Modified Mar 19, 2018
+Last Modified Mar 22, 2018
 
 The script ...
 
@@ -50,13 +50,13 @@ class CameraType:
 
 
 class DepthCamSubscriber:
-    def __init__(self):
+    def __init__(self, camera_type="D400"):
         self.bridge = CvBridge()
         rospy.init_node('depth_cam', anonymous=True)
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
-        self.cam = CameraType()
+        self.cam = CameraType(camera_type)
         self.r = rospy.Rate(10)
         self.rgb_data = self.depth_data = self.point_cloud = self.angle = self.height = None
         self._coords = [None] * self.cam.IMAGE_HEIGHT * self.cam.IMAGE_WIDTH
@@ -77,6 +77,10 @@ class DepthCamSubscriber:
         self.point_cloud = data
 
     def show_rgb(self):
+        """
+        Show rgb video
+        :return: None
+        """
         while self.rgb_data is None:
             pass
 
@@ -88,6 +92,10 @@ class DepthCamSubscriber:
         cv2.destroyAllWindows()
 
     def show_depth(self):
+        """
+        Show depth video
+        :return: None
+        """
         while self.depth_data is None:
             pass
 
@@ -101,6 +109,10 @@ class DepthCamSubscriber:
         cv2.destroyAllWindows()
 
     def show_all(self):
+        """
+        Show both rgb and depth video
+        :return: None
+        """
         while self.depth_data is None:
             pass
 
@@ -114,20 +126,33 @@ class DepthCamSubscriber:
                 break
         cv2.destroyAllWindows()
 
-    def get_coords(self):
+    def get_pointcloud_coords(self):
+        """
+        Get the current point cloud coordinates
+        :return: numpy array of 3D coordinates
+        """
         gen = pc2.read_points(self.point_cloud, field_names=("x", "y", "z"))
         for i, p in enumerate(gen):
             self._coords[i] = self.get_xyz_numpy(p)
-        return self._coords
+        return np.asarray(self._coords)
 
     def get_transformed_coords(self):
-        self.get_coords()
+        """
+        Get the current transformed point cloud coordinates
+        :return: numpy array of 3D transformed coordinates; if there's no transformed coordinates, return original ones
+        """
+        self.get_pointcloud_coords()
         if not np.math.isnan(self.height):
-            return transformation.transformPointCloud(self._coords, self.angle, self.height)
+            return np.asarray(transformation.transformPointCloud(self._coords, self.angle, self.height))
         print "No angle found, returns original coordinates"
-        return self._coords
+        return np.asarray(self._coords)
 
     def get_coord_from_pixel(self, pixel):
+        """
+        Get the coordinate of a pixel of an image
+        :param pixel: pixel of an image
+        :return: untransformed 3D coordinate of that pixel
+        """
         while self.point_cloud is None:
             print "No point cloud found"
 
@@ -142,6 +167,11 @@ class DepthCamSubscriber:
                 return self.get_xyz_numpy(p)
 
     def get_coords_from_pixels(self, pixels):
+        """
+        Get coordinates of pixels of an image
+        :param pixels: pixels of the image
+        :return: untransformed 3D coordinates of these pixels
+        """
         while self.point_cloud is None:
             print "No point cloud found"
 
@@ -164,26 +194,46 @@ class DepthCamSubscriber:
                     coords.append(coord)
                 if count == len(list):
                     break
-        return coords
+        return np.asarray(coords)
 
     def find_height_angle(self):
+        """
+        Find the angle and height of the camera
+        :return: angle (degrees), height
+        """
         while self.point_cloud is None:
             pass
 
-        self.get_coords()
+        # Get the current point cloud
+        self.get_pointcloud_coords()
+
+        # Find two points a and b on the ground. a also lies on Oz
         a = self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         b = self._coords[self.rowcol_to_i(self.cam.MID_ROW + self.cam.MID_ROW / 4, self.cam.MID_COL)]
         o = np.asarray([0, 0, 0])
+
+        # Find lengths of ab, oa, ob
         ab = self.distance(a, b)
         oa = self.distance(o, a)
         ob = self.distance(o, b)
+
+        # Find the angle using cosine law
         angle = 90 - np.degrees(np.arccos((ab ** 2 + oa ** 2 - ob ** 2) / (2 * oa * ab)))
+
+        # Find height of the camera
         height = np.cos(np.radians(angle)) * oa
+
+        # If not nan, update angle and height
         if not np.math.isnan(height):
             self.angle, self.height = angle, height
         return angle, height
 
     def get_xyz(self, p):
+        """
+        Get coordinates from a point in point cloud
+        :param p: point in point cloud
+        :return: x, y, z in meter
+        """
         x, y, z = p
         x = x * self.cam.DEPTH_UNIT + self.cam.OFFSET
         y = y * self.cam.DEPTH_UNIT + self.cam.OFFSET
@@ -191,6 +241,11 @@ class DepthCamSubscriber:
         return x, y, z
 
     def get_xyz_numpy(self, p):
+        """
+        Get coordinates from a point in point cloud
+        :param p: point in point cloud
+        :return: x, y, z in meter as a numpy array
+        """
         return np.asarray(self.get_xyz(p))
 
     def rowcol_to_i(self, row, col):
@@ -202,9 +257,9 @@ class DepthCamSubscriber:
     @staticmethod
     def distance(a, b):
         """
-        :param a: numpy array
-        :param b: numpy array
-        :return: Distance between two points in 2D
+        :param a: array
+        :param b: array
+        :return: distance between two points in 2D
         """
         return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
 
