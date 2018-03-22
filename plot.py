@@ -4,13 +4,13 @@ import numpy as np
 
 c = []
 i = 0
-coords = np.loadtxt('coords_4.txt', dtype=float)
+coords = np.loadtxt('coords_1_special_case.txt', dtype=float)
 for coord in coords:
     x, y, z = coord
     i += 1
     if not np.math.isnan(x) and y < 0.5:
-        if i % 50 != 0:
-            continue
+        # if i % 50 != 0:
+        #     continue
         c.append(coord)
 
 c = np.asarray(c)
