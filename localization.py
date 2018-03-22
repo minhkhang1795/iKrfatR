@@ -6,31 +6,32 @@ estimate the locations of the cubes
 """
 import numpy as np
 
+import cv2
+
 CUBE_SIZE_SMALL = 0.037  # in m
 CUBE_SIZE_LARGE = 0.086  # in m
 
 
 def cube_localization(coords, cube_size=CUBE_SIZE_SMALL):
-    max_y, r_coords = find_boundary(coords, cube_size)
+    r_coords = reduced_coords(coords, cube_size)
     cube_coords = []
     level = 1
-    while level * cube_size <= max_y and level <= 5:
+    while level <= 5:
         cube_coords.extend(find_cubes_at_height(r_coords, level, cube_size))
         level += 1
     return np.asarray(cube_coords)
 
 
-def find_boundary(coords, cube_size):
-    max_y = None
-    reduced_coords = []
+def reduced_coords(coords, cube_size):
+    r_coords = []
     for coord in coords:
+        # TODO: y coordinate to -y
+        coord[1] = -coord[1]
         x, y, z = coord
-        if y >= cube_size / 2:
-            reduced_coords.append(coord)
-            if max_y <= y or max_y is None:
-                max_y = y
+        if cube_size / 2 <= y <= cube_size * 5:
+            r_coords.append(coord)
 
-    return max_y, np.asarray(reduced_coords)
+    return np.asarray(r_coords)
 
 
 def find_cubes_at_height(r_coords, level, cube_size):
@@ -40,12 +41,12 @@ def find_cubes_at_height(r_coords, level, cube_size):
     # Find coords at y_max level
     coords_at_y = []
     for i, coord in enumerate(r_coords):
-        if coord[1] <= level * cube_size:
+        if abs(coord[1] - level * cube_size) <= 0.008:
             coords_at_y.append(coord)
     coords_at_y = np.asarray(coords_at_y)
 
     # Sort in-place by z
-    coords_at_y.view('i8,i8,i8').sort(order=['f2'], axis=0)
+    coords_at_y.view('float64,float64,float64').sort(order=['f2'], axis=0)
     while coords_at_y.size != 0:
         # Find coords from z_min to z_min + cube_size
         coords_at_z = []
@@ -62,10 +63,11 @@ def find_cubes_at_height(r_coords, level, cube_size):
         coords_at_z = np.asarray(coords_at_z)
 
         # Sort in-place by x
-        coords_at_z.view('i8,i8,i8').sort(order=['f0'], axis=0)
+        coords_at_z.view('float64,float64,float64').sort(order=['f0'], axis=0)
         while coords_at_z.size != 0:
             coords_at_x = []
             x_min = coords_at_z[0][0]
+            x_max = coords_at_z[-1][0]
             i_list = []
             for i, coord in enumerate(coords_at_z):
                 x, y, z = coord
@@ -91,6 +93,7 @@ def check_cube(coords, level, cube_size):
     :return: COM of the cube; None if there is no cube
     """
     cube = min_z = max_z = None
+    print "level", level
     min_x = coords[0][0]
     max_x = coords[-1][0]
     for coord in coords:
@@ -100,9 +103,10 @@ def check_cube(coords, level, cube_size):
         if max_z <= z or max_z is None:
             max_z = z
 
+    # TODO: Height level
     coord_area = abs(max_x - min_x) * abs(max_z - min_z)
     total_area = cube_size * cube_size
-    if coord_area >= 0.7 * total_area:
+    if coord_area >= 0.8 * total_area:
         cube_x = (min_x + max_x) / 2
         cube_y = level * cube_size / 2
         cube_z = (min_z + max_z) / 2
@@ -111,6 +115,10 @@ def check_cube(coords, level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_3.txt', dtype=float)
+    # dc = cv2.imread('image_2.jpg')
+    # cv2.imshow('RGB & Depth Image', dc)
+    # cv2.waitKey(0)
+
+    coords = np.loadtxt('coords_4.txt', dtype=float)
     cubes = cube_localization(coords)
     print len(cubes)

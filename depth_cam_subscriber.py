@@ -240,7 +240,7 @@ class DepthCamSubscriber:
         coords = self.get_transformed_coords()
         print "transformed", coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         print "original", self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
-        np.savetxt('coords_5.txt', coords, fmt='%f')
+        np.savetxt('coords_original_1.txt', np.asarray(coords), fmt='%f')
 
 
 if __name__ == '__main__':
