@@ -115,7 +115,7 @@ def check_cubes(coords, height_level, cube_size):
     :return: list of COMs of the cubes; empty list if there is no cube
     """
     cubes = []
-    if len(coords) < 150:
+    if len(coords) < 400:
         return cubes
     min_z = max_z_left = max_z_right = None
     min_x, max_x = coords[0][0], coords[-1][0]

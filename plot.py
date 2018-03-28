@@ -9,8 +9,8 @@ if __name__ == '__main__':
     for coord in coords:
         x, y, z = coord
         i += 1
-        if not np.math.isnan(x) and y < 0.5 and z < 1.5:
-            if i % 30 != 0:
+        if not np.math.isnan(x) and y < 0.5 and z < 1.5 and 0 < x < 0.25:
+            if i % 10 != 0:
                 continue
             c.append(coord)
 
