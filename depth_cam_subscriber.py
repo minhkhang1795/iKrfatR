@@ -21,6 +21,7 @@ import sensor_msgs.point_cloud2 as pc2
 from cv_bridge import CvBridgeError, CvBridge
 from sensor_msgs.msg import Image, PointCloud2
 import transformation
+import localization
 
 
 class CameraType:
@@ -50,13 +51,13 @@ class CameraType:
 
 
 class DepthCamSubscriber:
-    def __init__(self, camera_type="D400"):
+    def __init__(self, camera_type="D400", width=640, height=480):
         self.bridge = CvBridge()
         rospy.init_node('depth_cam', anonymous=True)
         rospy.Subscriber('/camera/color/image_raw', Image, self.rgb_callback, queue_size=10)
         rospy.Subscriber('/camera/depth/image_rect_raw', Image, self.depth_callback, queue_size=10)
         rospy.Subscriber('/camera/depth_registered/points', PointCloud2, self.pointcloud_callback, queue_size=10)
-        self.cam = CameraType(camera_type)
+        self.cam = CameraType(camera_type, width, height)
         self.r = rospy.Rate(10)
         self.rgb_data = self.depth_data = self.point_cloud = self.angle = self.height = None
         self._coords = [None] * self.cam.IMAGE_HEIGHT * self.cam.IMAGE_WIDTH
@@ -142,7 +143,7 @@ class DepthCamSubscriber:
         :return: numpy array of 3D transformed coordinates; if there's no transformed coordinates, return original ones
         """
         self.get_pointcloud_coords()
-        if not np.math.isnan(self.height):
+        if self.height is not None:
             return np.asarray(transformation.transformPointCloud(self._coords, self.angle, self.height))
         print "No angle found, returns original coordinates"
         return np.asarray(self._coords)
@@ -288,14 +289,17 @@ class DepthCamSubscriber:
             # cv2.imshow('', cd)
             # if cv2.waitKey(1) & 0xFF == ord('q'):
             #     break
-        # cv2.destroyAllWindows()
+            # cv2.destroyAllWindows()
 
     def test_transform_coords(self):
         print self.find_height_angle()
         coords = self.get_transformed_coords()
         print "transformed", coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         print "original", self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
-        np.savetxt('coords_original_1.txt', np.asarray(coords), fmt='%f')
+        np.savetxt('coords_8.txt', coords, fmt='%f')
+        cubes = localization.cube_localization(coords)
+        print len(cubes), "cubes"
+        print cubes
 
 
 if __name__ == '__main__':
