@@ -26,7 +26,7 @@ def cube_localization(coords, cube_size=CUBE_SIZE_SMALL):
 
     # Assume that the structure is not taller than 5 cubes
     height_level = 1
-    while height_level <= 5:
+    while height_level <= 6:
         cubes, r_coords = find_cubes_at_height(r_coords, height_level, cube_size)
         cube_coords.extend(cubes)
         height_level += 1
@@ -46,7 +46,7 @@ def reduced_coords(coords, cube_size):
         # TODO: y coordinate to -y
         coord[1] = -coord[1]
         x, y, z = coord
-        if 0.75 * cube_size <= y <= 5.25 * cube_size:
+        if 0.75 * cube_size <= y <= 6.25 * cube_size:
             r_coords.append(coord)
     return np.asarray(r_coords)
 
@@ -149,7 +149,7 @@ def check_cubes(coords, height_level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_8.txt', dtype=float)
+    coords = np.loadtxt('coords_10.txt', dtype=float)
     cubes = cube_localization(coords)
     print len(cubes), "cubes"
     print cubes
