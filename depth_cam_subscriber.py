@@ -143,7 +143,7 @@ class DepthCamSubscriber:
         :return: numpy array of 3D transformed coordinates; if there's no transformed coordinates, return original ones
         """
         self.get_pointcloud_coords()
-        if self.height is not None:
+        if self.is_not_nan(self.height):
             return np.asarray(transformation.transformPointCloud(self._coords, self.angle, self.height))
         print "No angle found, returns original coordinates"
         return np.asarray(self._coords)
@@ -191,7 +191,7 @@ class DepthCamSubscriber:
             if i in list:
                 coord = self.get_xyz_numpy(p)
                 count += 1
-                if not np.math.isnan(coord[0]):
+                if self.is_not_nan(coord[0]):
                     coords.append(coord)
                 if count == len(list):
                     break
@@ -225,7 +225,7 @@ class DepthCamSubscriber:
         height = np.cos(np.radians(angle)) * oa
 
         # If not nan, update angle and height
-        if not np.math.isnan(height):
+        if self.is_not_nan(height):
             self.angle, self.height = angle, height
         return angle, height
 
@@ -263,6 +263,10 @@ class DepthCamSubscriber:
         :return: distance between two points in 2D
         """
         return np.sqrt((b[0] - a[0]) ** 2 + (b[1] - a[1]) ** 2 + (b[2] - a[2]) ** 2)
+
+    @staticmethod
+    def is_not_nan(a):
+        return a is not None and not np.isnan(a)
 
     """ TESTING FUNCTIONS """
 

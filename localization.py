@@ -43,7 +43,7 @@ def reduced_coords(coords, cube_size):
     """
     r_coords = []
     for coord in coords:
-        # TODO: y coordinate to -y
+        # TODO: transform y coordinate to -y
         coord[1] = -coord[1]
         x, y, z = coord
         if 0.75 * cube_size <= y <= 6.25 * cube_size:
