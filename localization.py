@@ -118,7 +118,7 @@ def check_cubes(coords, height_level, cube_size):
     min_z = max_z = None
     min_x, max_x = coords[0][0], coords[-1][0]
 
-    # Find min_z, max_z_left, max_z_right
+    # Find min_z, max_z
     for coord in coords:
         x, y, z = coord
         if min_z > z or min_z is None:
