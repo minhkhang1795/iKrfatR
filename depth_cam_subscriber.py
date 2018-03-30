@@ -298,8 +298,8 @@ class DepthCamSubscriber:
         print "original", self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         np.savetxt('coords_25.txt', coords, fmt='%f')
         cubes = localization.cube_localization(coords)
-        print len(cubes), "cubes"q
         print cubes
+        print len(cubes), "cubes"
         import plot
         plot.plot_cube2D(cubes)
 

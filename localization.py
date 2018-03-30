@@ -134,8 +134,6 @@ def check_cubes(coords, height_level, cube_size):
     # If they are different, then the top surface area will be small, hence not a cube
     max_z = (max_z_left + max_z_right) / 2
     coord_area = abs(max_x - min_x) * abs(max_z - min_z)
-    # if min_x == -0.005369:
-    #     np.savetxt('coords_6_test.txt', coords, fmt='%f')
     expected_area = cube_size * cube_size
     if coord_area >= 0.7 * expected_area:
         cube_x = (min_x + max_x) / 2
@@ -149,10 +147,10 @@ def check_cubes(coords, height_level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_10.txt', dtype=float)
+    coords = np.loadtxt('coords_25.txt', dtype=float)
     cubes = cube_localization(coords)
-    print len(cubes), "cubes"
     print cubes
+    print len(cubes), "cubes"
     import plot
     plot.plot_cube2D(cubes)
 

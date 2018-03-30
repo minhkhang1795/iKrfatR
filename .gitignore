@@ -1,7 +1,2 @@
-*.png
-*.jpg
-*.JPG
-*.PNG
 *.zip
 .idea/*
-/color_tracking/recognition/.idea/*
