@@ -99,10 +99,48 @@ def find_cubes_at_height(coords, height_level, cube_size):
 
             # After limit all the point cloud to coords_at_yzx,
             # check if those coords form the top surface of a pile of cubes
-            new_cubes = check_cubes_old(coords_at_yzx, height_level, cube_size)
+            new_cubes = check_cubes(coords_at_yzx, height_level, cube_size)
             cubes.extend(new_cubes)
 
     return cubes, coords
+
+
+def check_cubes(coords, height_level, cube_size):
+    """
+    Check if the given coords can form the top surface of a cube.
+    If so, return a list of cubes from the top level to the bottom
+    :param coords: coords sorted by x that might make a cube
+    :param height_level: height level
+    :param cube_size: size of the cube
+    :return: list of COMs of the cubes; empty list if there is no cube
+    """
+    cubes = []
+    min_z = max_z = None
+    min_x, max_x = coords[0][0], coords[-1][0]
+
+    # Find min_z, max_z_left, max_z_right
+    for coord in coords:
+        x, y, z = coord
+        if min_z > z or min_z is None:
+            min_z = z
+        if max_z <= z or max_z is None:
+            max_z = z
+
+    center_coords = []
+    for coord in coords:
+        x, y, z = coord
+        if min_x + cube_size / 8 < x < max_x - cube_size / 8 and min_z + cube_size / 8 < z < max_z - cube_size / 8:
+            center_coords.append(coord)
+
+    if len(center_coords) >= 400:
+        cube_x = min_x + cube_size / 2
+        cube_z = min_z + cube_size / 2
+        while height_level >= 1:
+            cube_y = (height_level - 1) * cube_size + cube_size / 2
+            cube = np.asarray([cube_x, cube_y, cube_z])
+            cubes.append(cube)
+            height_level -= 1
+    return cubes
 
 
 def check_cubes_old(coords, height_level, cube_size):
@@ -147,10 +185,9 @@ def check_cubes_old(coords, height_level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_4.txt', dtype=float)
+    coords = np.loadtxt('coords_1.txt', dtype=float)
     cubes = cube_localization(coords)
     print cubes
     print len(cubes), "cubes"
     import plot
-
     plot.plot_cube2D(cubes)
