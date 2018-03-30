@@ -7,11 +7,13 @@ def plot_cube3d(coords):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
     ax.scatter(coords[:, 0], coords[:, 1], coords[:, 2], zdir='z', c='red')
+    plt.axis('equal')
     plt.show()
 
 
 def plot_cube2D(cubes):
     plt.plot(cubes[:, 0], cubes[:, 2], 'ro')
+    plt.axis('equal')
     plt.show()
 
 

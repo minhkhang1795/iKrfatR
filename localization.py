@@ -22,12 +22,12 @@ def cube_localization(coords, cube_size=CUBE_SIZE_SMALL):
     cube_coords = []
 
     # Reduce coordinates by only focusing on cubes
-    r_coords = reduced_coords(coords, cube_size)
+    coords = reduced_coords(coords, cube_size)
 
-    # Assume that the structure is not taller than 5 cubes
+    # Assume that the structure is not taller than 6 cubes
     height_level = 1
     while height_level <= 6:
-        cubes, r_coords = find_cubes_at_height(r_coords, height_level, cube_size)
+        cubes, coords = find_cubes_at_height(coords, height_level, cube_size)
         cube_coords.extend(cubes)
         height_level += 1
     return np.asarray(cube_coords)
@@ -51,18 +51,18 @@ def reduced_coords(coords, cube_size):
     return np.asarray(r_coords)
 
 
-def find_cubes_at_height(r_coords, height_level, cube_size):
+def find_cubes_at_height(coords, height_level, cube_size):
     cubes = []
 
     # Find all coords at y level, and remove those coords from the reduced_coords
     coords_at_y = []
     i_remove_list = []
-    for i, coord in enumerate(r_coords):
-        if abs(coord[1] - height_level * cube_size) <= cube_size/3:
+    for i, coord in enumerate(coords):
+        if abs(coord[1] - height_level * cube_size) <= cube_size / 3:
             coords_at_y.append(coord)
             i_remove_list.append(i)
     coords_at_y = np.asarray(coords_at_y)
-    r_coords = np.delete(r_coords, i_remove_list, axis=0)
+    coords = np.delete(coords, i_remove_list, axis=0)
 
     # Sort the new coords in-place by z
     coords_at_y.view('float64,float64,float64').sort(order=['f2'], axis=0)
@@ -99,13 +99,13 @@ def find_cubes_at_height(r_coords, height_level, cube_size):
 
             # After limit all the point cloud to coords_at_yzx,
             # check if those coords form the top surface of a pile of cubes
-            new_cubes = check_cubes(coords_at_yzx, height_level, cube_size)
+            new_cubes = check_cubes_old(coords_at_yzx, height_level, cube_size)
             cubes.extend(new_cubes)
 
-    return cubes, r_coords
+    return cubes, coords
 
 
-def check_cubes(coords, height_level, cube_size):
+def check_cubes_old(coords, height_level, cube_size):
     """
     Check if the given coords can form the top surface of a cube.
     If so, return a list of cubes from the top level to the bottom
@@ -136,8 +136,8 @@ def check_cubes(coords, height_level, cube_size):
     coord_area = abs(max_x - min_x) * abs(max_z - min_z)
     expected_area = cube_size * cube_size
     if coord_area >= 0.7 * expected_area:
-        cube_x = (min_x + max_x) / 2
-        cube_z = (min_z + max_z) / 2
+        cube_x = min_x + cube_size / 2
+        cube_z = min_z + cube_size / 2
         while height_level >= 1:
             cube_y = (height_level - 1) * cube_size + cube_size / 2
             cube = np.asarray([cube_x, cube_y, cube_z])
@@ -147,10 +147,10 @@ def check_cubes(coords, height_level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_25.txt', dtype=float)
+    coords = np.loadtxt('coords_4.txt', dtype=float)
     cubes = cube_localization(coords)
     print cubes
     print len(cubes), "cubes"
     import plot
-    plot.plot_cube2D(cubes)
 
+    plot.plot_cube2D(cubes)

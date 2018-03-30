@@ -294,15 +294,14 @@ class DepthCamSubscriber:
     def test_transform_coords(self):
         print self.find_height_angle()
         coords = self.get_transformed_coords()
-        print "transformed", coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         print "original", self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
-        np.savetxt('coords_25.txt', coords, fmt='%f')
+        print "transformed", coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
+        np.savetxt('coords_6.txt', coords, fmt='%f')
         cubes = localization.cube_localization(coords)
         print cubes
         print len(cubes), "cubes"
         import plot
         plot.plot_cube2D(cubes)
-
 
 
 if __name__ == '__main__':
