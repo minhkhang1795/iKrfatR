@@ -11,7 +11,7 @@ def plot_cube3d(coords):
     plt.show()
 
 
-def plot_cube2D(cubes):
+def plot_cube2d(cubes):
     plt.plot(cubes[:, 0], cubes[:, 2], 'ro')
     plt.axis('equal')
     plt.show()
@@ -21,8 +21,8 @@ def reduce_coords(coords):
     c = []
     for i, coord in enumerate(coords):
         x, y, z = coord
-        if not np.math.isnan(x) and y < 0.5 and z < 1.5 and 0 < x < 0.25:
-            if i % 10 != 0:
+        if not np.math.isnan(x) and y < 0.5 and z < 1.5 and 0 < x < 0.25 and z < 0.65:
+            if i % 5 != 0:
                 continue
             c.append(coord)
 
@@ -30,6 +30,6 @@ def reduce_coords(coords):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_8.txt', dtype=float)
+    coords = np.loadtxt('coords_7.txt', dtype=float)
     coords = reduce_coords(coords)
     plot_cube3d(coords)

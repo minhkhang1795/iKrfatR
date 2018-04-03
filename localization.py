@@ -46,7 +46,7 @@ def reduced_coords(coords, cube_size):
         # TODO: transform y coordinate to -y
         coord[1] = -coord[1]
         x, y, z = coord
-        if 0.75 * cube_size <= y <= 6.25 * cube_size:
+        if 0.75 * cube_size <= y <= 6.25 * cube_size and z < 0.65:
             r_coords.append(coord)
     return np.asarray(r_coords)
 
@@ -99,7 +99,7 @@ def find_cubes_at_height(coords, height_level, cube_size):
 
             # After limit all the point cloud to coords_at_yzx,
             # check if those coords form the top surface of a pile of cubes
-            new_cubes = check_cubes(coords_at_yzx, height_level, cube_size)
+            new_cubes = check_cubes_old(coords_at_yzx, height_level, cube_size)
             cubes.extend(new_cubes)
 
     return cubes, coords
@@ -129,10 +129,10 @@ def check_cubes(coords, height_level, cube_size):
     center_coords = []
     for coord in coords:
         x, y, z = coord
-        if min_x + cube_size / 8 < x < max_x - cube_size / 8 and min_z + cube_size / 8 < z < max_z - cube_size / 8:
+        if min_x + cube_size / 10 < x < max_x - cube_size / 10 and min_z + cube_size / 10 < z < max_z - cube_size / 10:
             center_coords.append(coord)
 
-    if len(center_coords) >= 400:
+    if len(center_coords) >= 300:
         cube_x = min_x + cube_size / 2
         cube_z = min_z + cube_size / 2
         while height_level >= 1:
@@ -185,9 +185,9 @@ def check_cubes_old(coords, height_level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_1.txt', dtype=float)
+    coords = np.loadtxt('coords_7.txt', dtype=float)
     cubes = cube_localization(coords)
     print cubes
     print len(cubes), "cubes"
     import plot
-    plot.plot_cube2D(cubes)
+    plot.plot_cube2d(cubes)
