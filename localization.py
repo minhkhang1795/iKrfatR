@@ -46,7 +46,7 @@ def reduced_coords(coords, cube_size):
         # TODO: transform y coordinate to -y
         coord[1] = -coord[1]
         x, y, z = coord
-        if 0.75 * cube_size <= y <= 6.25 * cube_size and z < 0.65:
+        if 0.75 * cube_size <= y <= 6.25 * cube_size:
             r_coords.append(coord)
     return np.asarray(r_coords)
 
@@ -185,7 +185,7 @@ def check_cubes_old(coords, height_level, cube_size):
 
 
 if __name__ == '__main__':
-    coords = np.loadtxt('coords_7.txt', dtype=float)
+    coords = np.loadtxt('coords_9.txt', dtype=float)
     cubes = cube_localization(coords)
     print cubes
     print len(cubes), "cubes"
