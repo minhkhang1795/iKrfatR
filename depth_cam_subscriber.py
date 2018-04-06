@@ -142,11 +142,11 @@ class DepthCamSubscriber:
         Get the current transformed point cloud coordinates
         :return: numpy array of 3D transformed coordinates; if there's no transformed coordinates, return original ones
         """
-        self.find_height_angle()
-        if self.is_not_nan(self.height):
-            return np.asarray(transformation.transformPointCloud(self._coords, self.angle, self.height))
-        print "No angle found, returns original coordinates"
-        return np.asarray(self._coords)
+
+        while not self.is_not_nan(self.height):
+            self.find_height_angle()
+            print self.angle, self.height
+        return np.asarray(transformation.transformPointCloud(self._coords, self.angle, self.height))
 
     def get_coord_from_pixel(self, pixel):
         """
@@ -299,7 +299,7 @@ class DepthCamSubscriber:
         coords = self.get_transformed_coords()
         print "original", self._coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
         print "transformed", coords[self.rowcol_to_i(self.cam.MID_ROW, self.cam.MID_COL)]
-        np.savetxt('coords_8.txt', coords, fmt='%f')
+        np.savetxt('coords_9.txt', coords, fmt='%f')
         cubes = localization.cube_localization(coords)
         print cubes
         print len(cubes), "cubes"
@@ -309,15 +309,5 @@ class DepthCamSubscriber:
 
 if __name__ == '__main__':
     test = DepthCamSubscriber()
-    # test.show_rgb()
-    # test.show_depth()
     test.show_all()
-    # test.test_pointcloud()
-    # coord = test.get_coord_from_pixel([0, -3])
-    # coord = test.get_coords_from_pixels([[479, 639], [0, 0], [0, 4], [2, 0], [5, 6], [-3, -5]])
-    while True:
-        angle, height = test.find_height_angle()
-        print angle, height
-        # if angle:
-        #     break
-    # test.test_transform_coords()
+    test.test_transform_coords()
