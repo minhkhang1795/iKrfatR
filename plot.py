@@ -22,8 +22,8 @@ def reduce_coords(coords):
     for i, coord in enumerate(coords):
         coord[1] = -coord[1]
         x, y, z = coord
-        if not np.math.isnan(x) and -0.4 < y < 0.5 and z < 1.5:
-            if i % 4 != 0:
+        if not np.math.isnan(x) and y < 0.5 and z < 1.5 and 0 < x < 0.25:
+            if i % 10 != 0:
                 continue
             c.append(coord)
 
